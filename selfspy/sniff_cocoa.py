@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with Selfspy.  If not, see <http://www.gnu.org/licenses/>.
 
-from Foundation import NSObject
+from Foundation import NSObject, NSAppleScript
 from AppKit import NSApplication, NSApp, NSWorkspace
 from Cocoa import (
     NSEvent, NSFlagsChanged,
@@ -40,6 +40,10 @@ import config as cfg
 import signal
 import time
 
+CHROME_TITLE_SCRIPT = (NSAppleScript.alloc().
+    initWithSource_('tell application "Google Chrome" to return title of active tab of front window'))
+CHROME_URL_SCRIPT = (NSAppleScript.alloc().
+    initWithSource_('tell application "Google Chrome" to return URL of active tab of front window'))
 
 class Sniffer:
     def __init__(self):
@@ -175,9 +179,14 @@ class Sniffer:
                         windowList = windowList + windowListLayered
                         for window in windowList:
                             if window['kCGWindowOwnerName'] == app_name:
+                                window_name = window.get('kCGWindowName', u'')
+                                if window_name == "" and app_name == "Google Chrome":
+                                    window_name = ("URL=" +
+                                        CHROME_URL_SCRIPT.executeAndReturnError_(None)[0].stringValue() + " TITLE=" +
+                                        CHROME_TITLE_SCRIPT.executeAndReturnError_(None)[0].stringValue())
                                 geometry = window['kCGWindowBounds']
                                 self.screen_hook(window['kCGWindowOwnerName'],
-                                                 window.get('kCGWindowName', u''),
+                                                 window_name,
                                                  geometry['X'],
                                                  geometry['Y'],
                                                  geometry['Width'],
